@@ -1,0 +1,57 @@
+:root {
+  --bg: #ffffff; --fg: #1c1f24; --muted: #6a717c; --line: #e3e6ea; --card: #f6f7f9;
+  --accent: #2f6fed; --accent-fg: #fff; --danger: #c62828; --ok: #2e7d32; --warn: #b26a00;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #16181d; --fg: #e8eaee; --muted: #9aa1ad; --line: #2c3038; --card: #1f2229; --accent: #5b8cf5; --danger: #ef6a6a; --ok: #62c36a; --warn: #e0a23b; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px 14px 16px; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+h1 { font-size: 15px; margin: 0; }
+.badge { padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.badge.running { color: var(--ok); border-color: var(--ok); }
+.badge.awaiting_user { color: var(--warn); border-color: var(--warn); }
+nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+nav button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--muted); cursor: pointer; font: inherit; }
+nav button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+.count { background: var(--card); border-radius: 999px; padding: 0 6px; font-size: 11px; }
+.panel[hidden], [hidden] { display: none !important; }
+label { display: block; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+input[type=text], input[type=password], input[type=number], textarea { display: block; width: 100%; margin-top: 3px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+textarea { resize: vertical; }
+button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.danger { color: var(--danger); }
+button.wide { width: 100%; }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+.row > * { flex: 1; }
+.row label { margin-top: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 11.5px; }
+.meter { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0; }
+.meter-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.bar.full > div { background: var(--danger); }
+.quick { display: flex; gap: 12px; align-items: flex-end; }
+.quick label { flex: 1; margin-top: 0; }
+.quick .check { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; padding-bottom: 7px; color: var(--fg); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+details { margin-top: 10px; } summary { cursor: pointer; color: var(--muted); }
+.draft { margin-top: 8px; padding: 8px; border: 1px dashed var(--line); border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+.list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 230px; overflow-y: auto; }
+.list li { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.list .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .err { display: block; color: var(--danger); font-size: 11px; white-space: normal; }
+.chip { flex: 0 0 auto; padding: 0 7px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); }
+.chip.sent { color: var(--ok); border-color: var(--ok); }
+.chip.failed, .chip.unconfirmed { color: var(--danger); border-color: var(--danger); }
+.chip.processing, .chip.drafted { color: var(--warn); border-color: var(--warn); }
+#toast { margin: 0 0 8px; padding: 7px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); }
+#toast.error { color: var(--danger); border-color: var(--danger); }
+#toast.ok { color: var(--ok); border-color: var(--ok); }
+button.big { padding: 11px 12px; font-size: 14px; margin-top: 12px; }
+.result-head { margin: 12px 0 4px; }

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Profile Message Writer",
+  "version": "3.0.0",
+  "description": "Reads the profile you have open and writes a personalised first message with your local Gemini server, in a side panel. You copy and send it yourself.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "scripting", "tabs", "clipboardWrite", "sidePanel"],
+  "host_permissions": [
+    "https://*.eharmony.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "action": { "default_title": "Open Profile Message Writer" },
+  "side_panel": { "default_path": "panel/panel.html" },
+  "commands": {
+    "generate-message": {
+      "suggested_key": { "default": "Alt+Shift+G", "mac": "Alt+Shift+G" },
+      "description": "Generate a message for the open profile"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.eharmony.com/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

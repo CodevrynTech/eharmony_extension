@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile Message Writer</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <h1>Profile Message Writer</h1>
+  </header>
+
+  <nav role="tablist">
+    <button role="tab" data-tab="generate" aria-selected="true">Generate</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+  </nav>
+
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+
+  <section id="tab-generate" class="panel">
+    <div class="meter" aria-label="Messages generated today">
+      <div class="meter-row"><span>Today</span><strong id="todayText">0 / 30</strong></div>
+      <div class="bar"><div id="todayBar"></div></div>
+    </div>
+
+    <label>Daily limit
+      <input id="quickLimit" type="number" min="1" max="500" step="1">
+    </label>
+
+    <button id="btnGenerate" class="primary wide big">Generate message for the open profile</button>
+    <p class="small muted">Open a profile, click the button, then copy the message and send it yourself.</p>
+
+    <div id="result" hidden>
+      <div class="result-head"><span id="resultFor" class="muted small"></span></div>
+      <div id="resultText" class="draft"></div>
+      <div class="row">
+        <button id="btnCopy" class="primary">Copy</button>
+        <button id="btnRegen">Regenerate</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="panel" hidden>
+    <label>Local server URL <input id="serverUrl" type="text" autocomplete="off"></label>
+    <label>API token <input id="apiToken" type="password" autocomplete="off" placeholder="same as API_TOKEN in server .env"></label>
+    <div class="row">
+      <label>Tone <input id="tone" type="text"></label>
+      <label>Language <input id="language" type="text"></label>
+    </div>
+    <label>Max message length <input id="maxChars" type="number" min="100" max="1000" step="1"></label>
+    <label>About you (optional, used lightly) <textarea id="senderContext" rows="2"></textarea></label>
+    <div class="row">
+      <button id="btnSave" class="primary">Save settings</button>
+      <button id="btnTest">Test connection</button>
+    </div>
+    <p class="small muted">This extension only reads the page you have open. It never types into or sends anything on the site.</p>
+  </section>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>
