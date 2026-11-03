@@ -26,6 +26,8 @@ test('manifest references files that exist and matches allowed hosts', () => {
   }
   for (const perm of ['storage', 'scripting', 'tabs', 'clipboardWrite', 'sidePanel']) assert.ok(m.permissions.includes(perm));
   assert.ok(m.host_permissions.includes('https://*.eharmony.com/*'));
+  assert.ok(m.host_permissions.includes('https://*.onrender.com/*'));
+  assert.deepEqual(m.optional_host_permissions, ['https://*/*']);
   assert.deepEqual(m.content_scripts[0].matches, ['https://*.eharmony.com/*']);
 });
 

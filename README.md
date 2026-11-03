@@ -10,17 +10,41 @@ side panel: "Hi Anna! …"  [Copy] ◀── extension ◀───────�
 ```
 
 No database: settings, the daily counter and the last message live in `chrome.storage.local`; the Gemini key lives
-only in the server `.env`.
+only on the server (`.env` locally, an environment variable on Render).
 
-## Setup (5 minutes)
+## Run locally (development)
 
 1. `pnpm install`
 2. Copy `.env.example` to `.env`; set `GEMINI_API_KEY` (https://aistudio.google.com/apikey) and `API_TOKEN`
-   (any 16+ char secret: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`).
+   (any 16+ char secret) — or use `LICENSES` as in the deployment section.
 3. `pnpm start` — keep this terminal open.
 4. Chrome → `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → select the `extension` folder.
    (Without Developer mode Chrome disables unpacked extensions.)
-5. Click the extension icon (opens the side panel) → **Settings** → paste the same token → **Save** → **Test connection**.
+5. Click the extension icon (opens the side panel) → **Settings** → paste the token → **Save** → **Test connection**.
+
+
+## Deploy on Render (so users need no setup)
+
+1. Push this repo to GitHub, then Render → **New → Blueprint** → select the repo (it reads `render.yaml`).
+2. Fill the secrets Render asks for:
+   * `GEMINI_API_KEY` — your key (it never leaves the server).
+   * `LICENSES` — one entry per user, `label:token[:dailyLimit]`, comma-separated. Generate entries with
+     `pnpm license acme 50` (prints the token to give the user and the entry to paste here).
+   * `ALLOWED_EXTENSION_IDS` (optional) — your extension's id, to stop other extensions using the API.
+3. Check `https://<your-service>.onrender.com/healthz` returns `{"ok":true}`.
+4. Set `DEFAULT_SERVER_URL` in `extension/lib/config.js` to that URL.
+
+Notes: the Starter plan is recommended (the free plan sleeps after 15 min idle and the first request takes 30–60 s).
+Quotas are per license per UTC day and held in memory, so they reset if the service restarts or redeploys. To remove a
+user, delete their entry from `LICENSES` and redeploy. Not tested on Render itself: the same server was verified locally
+in production mode (`RENDER=true`, production dependencies only, public host, per-license quota).
+
+## Give the extension to a user
+
+* **Zip (free):** zip the `extension` folder (after step 4 above). The user extracts it, opens `chrome://extensions`,
+  turns on **Developer mode**, clicks **Load unpacked**, then pastes their license token in the side panel's Settings.
+* **Chrome Web Store, Unlisted ($5 one-time developer fee):** upload the zip; the user installs from the link with no
+  Developer mode and gets automatic updates. Needs a privacy-policy URL and a review.
 
 ## Using it
 
@@ -36,7 +60,7 @@ only in the server `.env`.
 
 ## Verified
 
-* `pnpm test` — 55 tests (server, Gemini client with mocked HTTP, extension logic, content script on jsdom fixtures,
+* `pnpm test` — 64 tests (server, Gemini client with mocked HTTP, extension logic, content script on jsdom fixtures,
   static wiring, and a check that the extension code contains no DOM write/click/submit calls).
 * End to end in a real Chromium with the extension loaded, a logged-in eharmony session and the real Gemini API:
   page read (preference/filter boilerplate trimmed) → server → Gemini → side panel showing a personalised message,
@@ -57,14 +81,16 @@ only in the server `.env`.
 
 ## Security model
 
-The server binds to `127.0.0.1`, requires `Authorization: Bearer <API_TOKEN>` (constant-time compare), rejects
-non-local `Host` headers (DNS rebinding) and any `Origin` that is not `chrome-extension://`, rate-limits, validates
-input and size-limits bodies. Profile text is wrapped as untrusted data in the prompt, and links/emails are stripped
+Every request needs `Authorization: Bearer <license token>` (constant-time compare against all licenses). Each license
+has its own daily quota and per-minute rate limit; failed generations do not use quota. Only `chrome-extension://`
+origins (optionally only your extension id) may call the API. Locally the server binds to `127.0.0.1` and rejects
+non-local `Host` headers (DNS rebinding); on Render it binds publicly and the token is the guard. Input is validated
+and bodies are size-limited. Profile text is wrapped as untrusted data in the prompt, and links/emails are stripped
 from the output.
 
 ```
 server/src      config · prompt · gemini client · express app
-extension/lib   settings · cap · urls · api · controller (pure, tested)
+extension/lib   config · settings · cap · urls · api · controller (pure, tested)
 extension/src   background worker · chrome adapters · content script (read-only)
 extension/panel side panel UI
 ```

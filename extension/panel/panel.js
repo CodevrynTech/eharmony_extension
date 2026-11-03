@@ -129,10 +129,21 @@ $('quickLimit').addEventListener('change', () => guard(async () => {
 }));
 
 // ---------- settings ----------
+/** Remote servers need host access; Chrome asks the user once (must run from a click handler). */
+async function ensureHostAccess(serverUrl) {
+  const pattern = `${new URL(serverUrl).origin}/*`;
+  if (await chrome.permissions.contains({ origins: [pattern] })) return;
+  if (!(await chrome.permissions.request({ origins: [pattern] }))) {
+    throw new Error('Permission to contact the server was denied.');
+  }
+}
+
 $('btnSave').addEventListener('click', () => guard(async () => {
   const { settings, errors } = sanitizeSettings({ ...state.settings, ...readSettingsForm() });
   if (errors.length) throw new Error(errors[0]);
+  await ensureHostAccess(settings.serverUrl);
   await chrome.storage.local.set({ settings });
+  state.settings = settings; // storage.onChanged refreshes state asynchronously; don't refill the form from stale values
   fillSettingsForm();
   toast('Settings saved.');
 }));
@@ -141,8 +152,9 @@ $('btnTest').addEventListener('click', () => guard(async () => {
   const { settings, errors } = sanitizeSettings({ ...state.settings, ...readSettingsForm() });
   const relevant = errors.filter((e) => /URL|token/i.test(e));
   if (relevant.length) throw new Error(relevant[0]);
+  await ensureHostAccess(settings.serverUrl);
   const r = await createApi().health(settings);
-  toast(`Connected. Model: ${r.model}`);
+  toast(`Connected. Used today: ${r.quota.used} / ${r.quota.limit}.`);
 }));
 
 // ---------- live updates (also covers the keyboard-shortcut flow, which runs in the background) ----------

@@ -47,10 +47,10 @@ test('rejects foreign Host and web-page Origin, allows chrome-extension origin',
   try {
     assert.equal((await request(port, { path: '/api/health', headers: { ...auth, host: 'evil.example' } })).status, 403);
     assert.equal((await request(port, { path: '/api/health', headers: { ...auth, origin: 'https://evil.example' } })).status, 403);
-    const ext = await request(port, { path: '/api/health', headers: { ...auth, origin: 'chrome-extension://abc' } });
+    const ext = await request(port, { path: '/api/health', headers: { ...auth, origin: 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } });
     assert.equal(ext.status, 200);
-    assert.equal(ext.headers['access-control-allow-origin'], 'chrome-extension://abc');
-    const pre = await request(port, { method: 'OPTIONS', path: '/api/generate', headers: { origin: 'chrome-extension://abc' } });
+    assert.equal(ext.headers['access-control-allow-origin'], 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    const pre = await request(port, { method: 'OPTIONS', path: '/api/generate', headers: { origin: 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } });
     assert.equal(pre.status, 204);
   } finally { server.close(); }
 });
@@ -61,7 +61,7 @@ test('generate passes validated, defaulted input to generator', async () => {
   try {
     const r = await request(port, { method: 'POST', path: '/api/generate', headers: auth, body: valid });
     assert.equal(r.status, 200);
-    assert.deepEqual(r.json, { firstName: 'Anna', message: 'A fine message that is long enough.' });
+    assert.deepEqual(r.json, { firstName: 'Anna', message: 'A fine message that is long enough.', quota: { limit: 50, used: 1 } });
     assert.equal(got.maxChars, 400);
     assert.equal(got.language, 'English');
     assert.equal(got.hintName, 'Anna');

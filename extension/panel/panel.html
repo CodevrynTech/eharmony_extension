@@ -42,8 +42,11 @@
   </section>
 
   <section id="tab-settings" class="panel" hidden>
-    <label>Local server URL <input id="serverUrl" type="text" autocomplete="off"></label>
-    <label>API token <input id="apiToken" type="password" autocomplete="off" placeholder="same as API_TOKEN in server .env"></label>
+    <label>License token <input id="apiToken" type="password" autocomplete="off" placeholder="paste the token you were given"></label>
+    <details>
+      <summary>Advanced: server address</summary>
+      <label>Server URL <input id="serverUrl" type="text" autocomplete="off"></label>
+    </details>
     <div class="row">
       <label>Tone <input id="tone" type="text"></label>
       <label>Language <input id="language" type="text"></label>

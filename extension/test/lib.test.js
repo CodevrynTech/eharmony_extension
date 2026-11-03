@@ -22,7 +22,11 @@ test('settings: rejects bad cap, token, url, tone, length', () => {
   assert.ok(bad({ dailyLimit: 1.5 }).length);
   assert.ok(bad({ dailyLimit: 'abc' }).length);
   assert.ok(bad({ apiToken: 'short' }).length);
-  assert.ok(bad({ serverUrl: 'https://example.com' }).length);
+  assert.ok(bad({ serverUrl: 'http://example.com' }).length);
+  assert.ok(bad({ serverUrl: 'https://localhost' }).length);
+  assert.ok(bad({ serverUrl: 'https://user:pw@api.example.com' }).length);
+  assert.deepEqual(bad({ serverUrl: 'https://my-app.onrender.com/' }), []);
+  assert.equal(sanitizeSettings({ ...good, serverUrl: 'https://my-app.onrender.com/x/' }).settings.serverUrl, 'https://my-app.onrender.com');
   assert.ok(bad({ serverUrl: 'http://192.168.1.5:3000' }).length);
   assert.ok(bad({ tone: '' }).length);
   assert.ok(bad({ maxChars: 50 }).length);
@@ -74,9 +78,12 @@ test('api: error mapping', async () => {
   const run = (fetchImpl) => createApi(fetchImpl).generate(settings, { profileText: 'x', hintName: '' });
   const kind = async (fetchImpl) => { try { await run(fetchImpl); } catch (e) { assert.ok(e instanceof AppError); return e.kind; } return 'none'; };
   assert.equal(await kind(async () => { throw new TypeError('fetch failed'); }), 'fatal');
+  assert.equal(await kind(async () => resp(404, null)), 'fatal');
+  assert.equal(await kind(async () => resp(404, { error: { code: 'NOT_FOUND', message: 'Not found' } })), 'item');
   assert.equal(await kind(async () => resp(401, { error: { code: 'UNAUTHORIZED', message: 'no' } })), 'fatal');
   assert.equal(await kind(async () => resp(502, { error: { code: 'UPSTREAM_AUTH', message: 'bad key' } })), 'fatal');
   assert.equal(await kind(async () => resp(429, { error: { code: 'UPSTREAM_RATE_LIMIT', message: 'q' } })), 'transient');
+  assert.equal(await kind(async () => resp(429, { error: { code: 'QUOTA_EXCEEDED', message: 'used up' } })), 'item');
   assert.equal(await kind(async () => resp(503, { error: { code: 'UPSTREAM_ERROR', message: 'q' } })), 'transient');
   assert.equal(await kind(async () => resp(500, null)), 'transient');
   assert.equal(await kind(async () => resp(400, { error: { code: 'VALIDATION', message: 'short' } })), 'item');

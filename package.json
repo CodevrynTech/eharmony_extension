@@ -1,14 +1,15 @@
 {
-  "name": "profile-messenger-assistant",
+  "name": "profile-message-writer",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Local Gemini server + Chrome extension that drafts (and optionally sends) profile messages.",
+  "description": "Chrome extension + Gemini server that writes a personalised first message for the profile you have open.",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "start": "node server/src/index.js",
+    "license": "node scripts/gen-license.mjs",
     "test": "node --test \"server/test/*.test.js\" \"extension/test/*.test.js\""
   },
   "dependencies": {
@@ -16,7 +17,7 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
-    "jsdom": "^25.0.1",
-    "playwright-core": "^1.64.1"
-  }
+    "jsdom": "^25.0.1"
+  },
+  "packageManager": "pnpm@12.5.1"
 }

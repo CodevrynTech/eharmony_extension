@@ -1,6 +1,8 @@
+import { DEFAULT_SERVER_URL } from './config.js';
+
 export const DEFAULT_SETTINGS = Object.freeze({
   dailyLimit: 30,
-  serverUrl: 'http://127.0.0.1:3000',
+  serverUrl: DEFAULT_SERVER_URL,
   apiToken: '',
   tone: 'warm, friendly and genuine',
   language: 'English',
@@ -28,15 +30,17 @@ export function sanitizeSettings(input = {}) {
   const url = String(merged.serverUrl || '').trim().replace(/\/+$/, '');
   try {
     const u = new URL(url);
-    if (u.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(u.hostname)) throw new Error('bad');
+    const local = u.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(u.hostname);
+    const remote = u.protocol === 'https:' && u.hostname.includes('.') && !u.username && !u.password;
+    if (!local && !remote) throw new Error('bad');
     s.serverUrl = `${u.protocol}//${u.host}`;
   } catch {
-    errors.push('Server URL must be a local http address, e.g. http://127.0.0.1:3000');
-    s.serverUrl = DEFAULT_SETTINGS.serverUrl;
+    errors.push('Server URL must be an https address (https://your-server.example.com) or a local http address (http://127.0.0.1:3000).');
+    s.serverUrl = DEFAULT_SERVER_URL;
   }
 
   s.apiToken = String(merged.apiToken || '').trim();
-  if (s.apiToken.length < 16) errors.push('API token must be at least 16 characters (same as API_TOKEN in the server .env).');
+  if (s.apiToken.length < 16) errors.push('License token must be at least 16 characters.');
 
   const text = (key, label, max, { required = false } = {}) => {
     const v = String(merged[key] ?? '').trim();

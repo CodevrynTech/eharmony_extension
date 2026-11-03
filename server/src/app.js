@@ -12,11 +12,8 @@ export class HttpError extends Error {
   }
 }
 
-function safeEqual(a, b) {
-  const ha = crypto.createHash('sha256').update(String(a)).digest();
-  const hb = crypto.createHash('sha256').update(String(b)).digest();
-  return crypto.timingSafeEqual(ha, hb);
-}
+const sha = (v) => crypto.createHash('sha256').update(String(v)).digest();
+const safeEqual = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
 
 function validateGenerateBody(body) {
   const str = (v, name, { min = 0, max, required = false } = {}) => {
@@ -47,7 +44,7 @@ function validateGenerateBody(body) {
   };
 }
 
-function createRateLimiter(limit, windowMs = 60000, now = Date.now) {
+function createRateLimiter(limit, windowMs, now) {
   const hits = [];
   return () => {
     const t = now();
@@ -58,21 +55,41 @@ function createRateLimiter(limit, windowMs = 60000, now = Date.now) {
   };
 }
 
-export function createApp({ config, generate, log = () => {} }) {
+const utcDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+export function createApp({ config, generate, log = () => {}, now = Date.now }) {
   const app = express();
   app.disable('x-powered-by');
-  const allow = createRateLimiter(config.rateLimitPerMin);
 
-  // Block DNS-rebinding and calls from ordinary web pages: only local hosts, and
-  // only requests with no Origin (extension service worker) or a chrome-extension origin.
+  // Per-license state. In memory: quotas reset on restart/redeploy (documented in the README).
+  const usage = new Map(); // label -> { day, used }
+  const limiters = new Map(); // label -> allow()
+  const usageFor = (license) => {
+    const day = utcDay(now());
+    let u = usage.get(license.label);
+    if (!u || u.day !== day) { u = { day, used: 0 }; usage.set(license.label, u); }
+    return u;
+  };
+  const limiterFor = (license) => {
+    if (!limiters.has(license.label)) limiters.set(license.label, createRateLimiter(config.rateLimitPerMin, 60000, now));
+    return limiters.get(license.label);
+  };
+
+  // Liveness probe for the hosting platform: public, no data.
+  app.get('/healthz', (req, res) => res.json({ ok: true }));
+
   app.use((req, res, next) => {
-    const host = String(req.headers.host || '').replace(/:\d+$/, '');
-    if (!LOCAL_HOSTS.has(host)) return next(new HttpError(403, 'FORBIDDEN_HOST', 'Only local access is allowed'));
-    const origin = req.headers.origin;
-    if (origin && !origin.startsWith('chrome-extension://')) {
-      return next(new HttpError(403, 'FORBIDDEN_ORIGIN', 'Origin not allowed'));
+    // Loopback mode: block DNS rebinding with a Host allow-list. Public mode relies on the license token.
+    if (!config.publicMode) {
+      const host = String(req.headers.host || '').replace(/:\d+$/, '');
+      if (!LOCAL_HOSTS.has(host)) return next(new HttpError(403, 'FORBIDDEN_HOST', 'Only local access is allowed'));
     }
+    // Only the extension may call the API from a browser: no Origin (service worker) or a chrome-extension origin.
+    const origin = req.headers.origin;
     if (origin) {
+      const m = /^chrome-extension:\/\/([a-p]{32})$/.exec(origin);
+      const allowed = m && (config.allowedExtensionIds.length === 0 || config.allowedExtensionIds.includes(m[1]));
+      if (!allowed) return next(new HttpError(403, 'FORBIDDEN_ORIGIN', 'Origin not allowed'));
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -82,25 +99,41 @@ export function createApp({ config, generate, log = () => {} }) {
     next();
   });
 
-  app.use(express.json({ limit: '300kb' }));
-
+  // Authenticate before parsing bodies so anonymous callers cannot make us parse large payloads.
   app.use('/api', (req, res, next) => {
     const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
-    if (!m || !safeEqual(m[1], config.apiToken)) return next(new HttpError(401, 'UNAUTHORIZED', 'Invalid or missing API token'));
+    let found = null;
+    if (m) for (const l of config.licenses) if (safeEqual(m[1], l.token)) found = l; // no early exit
+    if (!found) return next(new HttpError(401, 'UNAUTHORIZED', 'Invalid or missing license token'));
+    req.license = found;
     next();
   });
 
-  app.get('/api/health', (req, res) => res.json({ ok: true, model: config.model }));
+  app.use(express.json({ limit: '300kb' }));
+
+  app.get('/api/health', (req, res) => {
+    const u = usageFor(req.license);
+    res.json({ ok: true, model: config.model, quota: { limit: req.license.dailyLimit, used: u.used } });
+  });
 
   app.post('/api/generate', async (req, res, next) => {
+    const license = req.license;
+    let reserved = null;
     try {
-      if (!allow()) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests, slow down');
+      if (!limiterFor(license)()) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests, slow down');
       const input = validateGenerateBody(req.body);
+      const u = usageFor(license);
+      if (u.used >= license.dailyLimit) {
+        throw new HttpError(429, 'QUOTA_EXCEEDED', `Daily quota of ${license.dailyLimit} messages is used up. It resets at 00:00 UTC.`);
+      }
+      u.used += 1; // reserve first so concurrent requests cannot overshoot the quota
+      reserved = u;
       const started = Date.now();
       const result = await generate(input);
-      log('generate ok', { ms: Date.now() - started, chars: result.message.length });
-      res.json(result);
+      log('generate ok', { license: license.label, ms: Date.now() - started, chars: result.message.length, used: u.used });
+      res.json({ ...result, quota: { limit: license.dailyLimit, used: u.used } });
     } catch (err) {
+      if (reserved) reserved.used -= 1; // failed generations are free
       next(err);
     }
   });
